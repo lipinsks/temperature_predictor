@@ -1,55 +1,73 @@
-Temperature Predictor
+# Temperature Predictor
 
-Projekt służy do przewidywania temperatury na podstawie danych pogodowych, czasu oraz lokalizacji geograficznej.
-Wstępnie wytrenowany model LightGBM operuje na ponad 1 250 000 rekordach historycznych, a przewidywania są dostępne przez prostą aplikację webową z interaktywną mapą.
+This project predicts temperature based on weather data, time, and geographic location.
+The LightGBM model is trained on over 1,250,000 historical records, and predictions are served through a simple web application with an interactive map.
 
-Główne funkcjonalności
-	•	Pobieranie i przetwarzanie danych pogodowych z bazy SQLite
-	•	Featuryzacja danych (czasowe oraz opcjonalnie przestrzenne cechy)
-	•	Trening modeli regresyjnych LightGBM (warianty: spatial=True lub spatial=False)
-	•	Zapis wytrenowanego modelu na dysk
-	•	API udostępniające predykcje temperatury dla wskazanej lokalizacji i daty
-	•	Prosta aplikacja webowa z interaktywną mapą do wyboru lokalizacji
+## Main Features
 
-Krótka charakterystyka modelu
-	•	Algorytm: LightGBM
-	•	Liczba rekordów treningowych: ~1 250 000
-	•	Błąd średniokwadratowy (RMSE): około 4.0°C (zależny od wariantu modelu i danych)
+- Data ingestion and processing from SQLite database
+- Feature engineering (time-based and optionally spatial features)
+- LightGBM regression model training (`spatial=True` or `spatial=False` modes)
+- Model serialization to disk
+- API for serving temperature predictions for given location and date
+- Simple web application with interactive map for user input
 
-Struktura projektu
-	•	weather_forecast/ — moduły do przetwarzania danych, featuryzacji, treningu i inferencji
-	•	models/ — katalog na zapisane modele (lgbm_spatial.pkl, lgbm_nospatial.pkl)
-	•	templates/ — pliki HTML do webappki (frontend mapy)
-	•	predict.py — szybki interfejs CLI do predykcji
-	•	app.py — backend API na Flasku
+## Model Summary
 
-Szybki start
-	1.	Klonuj repo:
+- Algorithm: LightGBM
+- Training records: ~1,250,000
+- Root Mean Squared Error (RMSE): approximately 4.0°C (depending on model variant and data)
 
+## Project Structure
+
+- `weather_forecast/` — data processing, feature engineering, training, and inference modules
+- `models/` — directory for saved models (`lgbm_spatial.pkl`, `lgbm_nospatial.pkl`)
+- `templates/` — HTML templates for the web application (map frontend)
+- `predict.py` — simple CLI interface for predictions
+- `app.py` — Flask backend API
+
+## Quick Start
+
+1. Clone the repository:
+
+```bash
 git clone https://github.com/lipinsks/temperature_predictor.git
 cd temperature_predictor
-	2.	Utwórz i aktywuj środowisko:
+```
 
+2. Create and activate virtual environment:
+
+```bash
 python3 -m venv venv
-source venv/bin/activate  (Windows: venv\Scripts\activate)
-	3.	Zainstaluj zależności:
+source venv/bin/activate  # (Windows: venv\Scripts\activate)
+```
 
+3. Install dependencies:
+
+```bash
 pip install -r requirements.txt
-	4.	Upewnij się, że masz przygotowaną bazę danych data/weather.db i wytrenowany model w katalogu models/.
-	5.	Uruchom serwer API:
+```
 
+4. Make sure you have the `data/weather.db` database and trained model saved under `models/`.
+
+5. Run the API server:
+
+```bash
 python app.py
+```
 
-Serwis będzie dostępny pod http://localhost:5001/ z interaktywną mapą do przewidywań.
+The service will be available at `http://localhost:5001/` with the interactive map.
 
-Przykładowe użycie z terminala
+## Example CLI usage
 
+```bash
 python predict.py 50.0 19.9 2025-06-11T15:00:00
+```
 
-Plany rozwoju
-	•	Poprawa dokładności modelu (więcej danych / bardziej zaawansowane cechy)
-	•	Dodanie walidacji geograficznej i zakresów dat
-	•	Optymalizacja wydajności API
-	•	Deployment online (Docker / chmura)
+## Future Plans
 
-Autor: Szymon Lipiński
+- Improve model accuracy (more data / advanced features - via OpenWeatherStudent pass license)
+- Add geographic feature (like rain, wind, etc.)
+- Online deployment (Docker / cloud)
+
+---
