@@ -47,8 +47,13 @@ source venv/bin/activate  # (Windows: venv\Scripts\activate)
 ```bash
 pip install -r requirements.txt
 ```
-
-4. Make sure you have the `data/weather.db` database and trained model saved under `models/`.
+4.
+```bash
+ if want_to_train_own_model:
+       Make sure you have the `data/weather.db` with you own data.
+   else:
+       You can use already trained model 'models/lgbm_nospatial.pkl' or 'models/lgbm_spatial.pkl' for your prompts. 
+```
 
 5. Run the API server:
 
@@ -64,7 +69,7 @@ The service will be available at `http://localhost:5001/` with the interactive m
 python predict.py 50.0 19.9 2025-06-11T15:00:00
 ```
 
-## Future Plans
+## Future
 
 - Improve model accuracy (more data / advanced features - via OpenWeatherStudent pass license)
 - Add geographic feature (like rain, wind, etc.)
