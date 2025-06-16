@@ -13,44 +13,43 @@ logger = logging.getLogger(__name__)
 # --- Exceptions --------------------------------------------------------------
 
 class DataSourceError(Exception):
-    """Wyjątek zgłaszany przy problemach z load()."""
+    """Raised when load() fails for any data source."""
     pass
 
-# --- Abstrakcja ----------------------------------------------------------------
+# --- Abstraction -------------------------------------------------------------
 
 class BaseDataSource(ABC):
     @abstractmethod
     def load(self) -> pd.DataFrame:
         """
-        Ładuje dane i zwraca pandas.DataFrame z kolumnami:
-        ['id','temperature','lat','lon','country_code','city','timestamp'].
+        Load data and return a DataFrame with at least:
+        ['id','temperature','lat','lon','timestamp'] plus our new API columns.
         """
         ...
 
-# --- Implementacje -----------------------------------------------------------
+# --- Implementations --------------------------------------------------------
 
 class SQLiteSource(BaseDataSource):
     def __init__(self, db_path: str, table: Optional[str] = None, query: Optional[str] = None):
         """
-        db_path: ścieżka do pliku bazy SQLite (.db / .sqlite3)
-        table: nazwa tabeli do wczytania. Jeśli podane, ignoruje query.
-        query: dowolne zapytanie SQL.
+        db_path: path to SQLite file
+        table: table name to read (ignores query if set)
+        query: custom SQL query
         """
         self.db_path = db_path
-        self.table = table
-        self.query = query
-        conn_str = f"sqlite:///{self.db_path}"
-        self.engine = create_engine(conn_str)
+        self.table   = table
+        self.query   = query
+        self.engine  = create_engine(f"sqlite:///{db_path}")
 
     def load(self) -> pd.DataFrame:
-        logger.info("Ładuję dane z SQLite: %s", self.db_path)
+        logger.info("Loading data from SQLite: %s", self.db_path)
         try:
             if self.table:
                 q = f"SELECT * FROM {self.table}"
             elif self.query:
                 q = self.query
             else:
-                raise DataSourceError("Musisz podać table lub query dla SQLiteSource")
+                raise DataSourceError("Must provide table or query for SQLiteSource")
             df = pd.read_sql(q, self.engine)
             _validate_schema(df)
             return df
@@ -60,10 +59,10 @@ class SQLiteSource(BaseDataSource):
 class PostgresSource(BaseDataSource):
     def __init__(self, conn_str: str, query: str, connect_args: Optional[Dict[str,Any]] = None):
         self.engine = create_engine(conn_str, connect_args=connect_args or {})
-        self.query = query
+        self.query  = query
 
     def load(self) -> pd.DataFrame:
-        logger.info("Ładuję dane z Postgresa")
+        logger.info("Loading data from Postgres")
         try:
             with self.engine.connect() as conn:
                 df = pd.read_sql(self.query, conn)
@@ -77,7 +76,7 @@ class CSVSource(BaseDataSource):
         self.filepath = filepath
 
     def load(self) -> pd.DataFrame:
-        logger.info("Ładuję dane z CSV: %s", self.filepath)
+        logger.info("Loading data from CSV: %s", self.filepath)
         try:
             df = pd.read_csv(self.filepath)
             _validate_schema(df)
@@ -88,43 +87,46 @@ class CSVSource(BaseDataSource):
 class S3Source(BaseDataSource):
     def __init__(self, bucket: str, key: str, aws_cfg: Optional[Dict[str,Any]] = None):
         self.bucket = bucket
-        self.key = key
-        self.s3 = boto3.client("s3", **(aws_cfg or {}))
+        self.key    = key
+        self.s3     = boto3.client("s3", **(aws_cfg or {}))
 
     def load(self) -> pd.DataFrame:
-        logger.info("Ładuję dane z S3: s3://%s/%s", self.bucket, self.key)
+        logger.info("Loading data from S3: s3://%s/%s", self.bucket, self.key)
         try:
             obj = self.s3.get_object(Bucket=self.bucket, Key=self.key)
-            df = pd.read_csv(obj["Body"])
+            df  = pd.read_csv(obj["Body"])
             _validate_schema(df)
             return df
         except (BotoCoreError, ClientError, Exception) as e:
             raise DataSourceError(f"S3 load failed: {e}")
 
-# --- Walidacja i utils -------------------------------------------------------
+# --- Schema validation ------------------------------------------------------
 
 def _validate_schema(df: pd.DataFrame) -> None:
-    required = {"id", "temperature", "lat", "lon", "timestamp"}
+    # We now require the core API fields plus the original ones
+    required = {
+        "id", "temperature", "lat", "lon", "timestamp",
+        "feels_like", "temp_min", "temp_max",
+        "pressure", "humidity", "visibility",
+        "wind_speed", "wind_deg", "clouds_all",
+        "weather_main"
+    }
     missing = required - set(df.columns)
     if missing:
-        raise DataSourceError(f"Brakuje kolumn: {missing}")
-    # upewnij się, że timestamp jest datetime
+        raise DataSourceError(f"Missing columns: {missing}")
+    # Ensure timestamp is datetime
     if not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
         df["timestamp"] = pd.to_datetime(df["timestamp"], errors="raise")
 
 
+# --- Example usage ----------------------------------------------------------
 
-# EXAMPLE USAGE
 def example_usage():
     db_file = "data/weather.db"
-
     try:
-        src = SQLiteSource(
-            db_path=db_file,
-            table="weather"
-        )
-        df = src.load()
-        print("Załadowano rekordów:", len(df))
+        src = SQLiteSource(db_path=db_file, table="weather")
+        df  = src.load()
+        print("Loaded rows:", len(df))
         print(df.head())
     except DataSourceError as e:
-        print("Błąd wczytywania:", e)
+        print("Data ingest error:", e)
